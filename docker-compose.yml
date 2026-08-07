@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: totem
+      POSTGRES_PASSWORD: totem
+      POSTGRES_DB: totem_bot
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - totem_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U totem -d totem_bot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-test:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: totem
+      POSTGRES_PASSWORD: totem
+      POSTGRES_DB: totem_bot_test
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - totem_postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U totem -d totem_bot_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  totem_postgres_data:
+  totem_postgres_test_data:
