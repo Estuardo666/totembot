@@ -1,0 +1,10 @@
+// Esquema mínimo para M1: solo prepara Prisma (cliente generable, conexión
+// verificable). El modelado completo del dominio es tarea M2-03.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
