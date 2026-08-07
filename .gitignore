@@ -1,0 +1,63 @@
+# --- Secretos y sesión de WhatsApp (CRÍTICO) ---------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+secrets/
+
+# Sesión de Baileys: equivale a la credencial completa de la cuenta.
+# Debe vivir FUERA del repositorio; esto es solo una red de seguridad.
+.local/
+wa-auth/
+**/wa-auth/
+*auth_info*
+**/auth_info_baileys/
+*.creds.json
+baileys_store*.json
+
+# --- Dependencias y build ----------------------------------------------------
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+.pnpm-store/
+
+# --- Prisma ------------------------------------------------------------------
+src/infrastructure/database/generated/
+prisma/*.db
+prisma/*.db-journal
+
+# --- Pruebas y cobertura -----------------------------------------------------
+coverage/
+.nyc_output/
+*.lcov
+
+# --- Logs --------------------------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.pm2/
+
+# --- Volcados de base de datos ----------------------------------------------
+*.dump
+*.dump.gpg
+*.sql.gz
+backups/
+
+# --- Sistema operativo y editores -------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*~
+
+# --- Temporales --------------------------------------------------------------
+tmp/
+temp/
+.cache/
