@@ -4,10 +4,9 @@ Bot interno de recordatorios para **Totem Mass Media**. Envía recordatorios ope
 (grabaciones, revisiones de tareas audiovisuales y pagos) a **grupos privados de WhatsApp
 ya existentes** de clientes de la agencia.
 
-> **Estado actual: M1 — Esqueleto técnico (en curso).**
-> Existe un servidor Fastify mínimo con `/health` y `/ready`, configuración validada,
-> logging con redacción y CI. No hay dominio, no hay worker funcional, no hay sesión de
-> WhatsApp vinculada. No se ha enviado ningún mensaje. **El bot no funciona todavía.**
+> **Estado actual: M5 — Casos de uso y CLI administrativa (en curso).**
+> El dominio, persistencia, worker dry-run, plantillas y comandos administrativos están
+> implementados. Baileys sigue desactivado y no hay sesión vinculada ni mensajes reales.
 
 ---
 
@@ -67,6 +66,7 @@ cp .env.example .env
 docker compose up -d postgres
 pnpm install
 pnpm db:generate
+pnpm db:seed
 pnpm dev
 ```
 
@@ -90,7 +90,9 @@ Ver la tabla completa en [CONTRIBUTING.md](CONTRIBUTING.md#comandos). Resumen:
 `pnpm dev`, `pnpm dev:worker`, `pnpm build`, `pnpm start`, `pnpm start:worker`,
 `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `pnpm test:unit`,
 `pnpm test:integration`, `pnpm test:coverage`, `pnpm db:generate`, `pnpm db:migrate`,
-`pnpm db:deploy`, `pnpm db:studio`, `pnpm check`.
+`pnpm db:deploy`, `pnpm db:seed`, `pnpm db:studio`, `pnpm cli client:create`,
+`pnpm cli group:authorize`, `pnpm cli automation:pause`, `pnpm cli reminder:resolve`,
+`pnpm check`.
 
 ## 8. Ruta hacia producción
 
@@ -115,16 +117,18 @@ API) queda documentada como plan B en [docs/adr/0004-baileys-adapter-boundary.md
 
 ## 10. Documentación
 
-| Documento                          | Contenido                                     |
-| ---------------------------------- | --------------------------------------------- |
-| [AGENTS.md](AGENTS.md)             | Reglas canónicas para agentes de IA y humanos |
-| [CLAUDE.md](CLAUDE.md)             | Instrucciones específicas para Claude Code    |
-| [SPEC.md](SPEC.md)                 | Requisitos y criterios de aceptación          |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Arquitectura y flujos                         |
-| [TASKS.md](TASKS.md)               | Backlog ejecutable por milestones             |
-| [SECURITY.md](SECURITY.md)         | Seguridad y respuesta a incidentes            |
-| [TESTING.md](TESTING.md)           | Estrategia de pruebas                         |
-| [DEPLOYMENT.md](DEPLOYMENT.md)     | Despliegue en Hostinger con PM2               |
-| [OPERATIONS.md](OPERATIONS.md)     | Runbook operativo                             |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Flujo de trabajo y comandos                   |
-| [docs/](docs/)                     | Diseño detallado, ADRs y referencias          |
+| Documento                                    | Contenido                                     |
+| -------------------------------------------- | --------------------------------------------- |
+| [AGENTS.md](AGENTS.md)                       | Reglas canónicas para agentes de IA y humanos |
+| [CLAUDE.md](CLAUDE.md)                       | Instrucciones específicas para Claude Code    |
+| [SPEC.md](SPEC.md)                           | Requisitos y criterios de aceptación          |
+| [ARCHITECTURE.md](ARCHITECTURE.md)           | Arquitectura y flujos                         |
+| [TASKS.md](TASKS.md)                         | Backlog ejecutable por milestones             |
+| [SECURITY.md](SECURITY.md)                   | Seguridad y respuesta a incidentes            |
+| [TESTING.md](TESTING.md)                     | Estrategia de pruebas                         |
+| [DEPLOYMENT.md](DEPLOYMENT.md)               | Despliegue en Hostinger con PM2               |
+| [OPERATIONS.md](OPERATIONS.md)               | Runbook operativo                             |
+| [CONTRIBUTING.md](CONTRIBUTING.md)           | Flujo de trabajo y comandos                   |
+| [docs/CLI.md](docs/CLI.md)                   | Sintaxis de la CLI administrativa             |
+| [docs/PROVISIONING.md](docs/PROVISIONING.md) | Aprovisionamiento del VPS (`OWNER_REQUIRED`)  |
+| [docs/](docs/)                               | Diseño detallado, ADRs y referencias          |

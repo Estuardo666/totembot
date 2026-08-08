@@ -1,10 +1,235 @@
-// Esquema mínimo para M1: solo prepara Prisma (cliente generable, conexión
-// verificable). El modelado completo del dominio es tarea M2-03.
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+enum ClientStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+enum TaskStatus {
+  DRAFT
+  EDITING
+  CLIENT_REVIEW
+  CHANGES_REQUESTED
+  APPROVED
+  PUBLISHED
+  CANCELLED
+}
+enum RecordingStatus {
+  SCHEDULED
+  RESCHEDULED
+  DONE
+  CANCELLED
+}
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+enum ReminderType {
+  RECORDING_24H
+  TASK_CLIENT_REVIEW_48H
+  INVOICE_UPCOMING_DUE
+  INVOICE_DUE_TODAY
+  INVOICE_OVERDUE
+}
+enum ReminderStatus {
+  PENDING
+  CLAIMED
+  PROCESSING
+  SENT
+  RETRY_SCHEDULED
+  CANCELLED
+  FAILED
+  SKIPPED
+  NEEDS_REVIEW
+}
+enum AttemptStatus {
+  STARTED
+  SUCCESS
+  FAILED
+  SKIPPED_DRY_RUN
+}
+
+model Client {
+  id String @id @db.Uuid
+  name String
+  status ClientStatus @default(ACTIVE)
+  timeZone String?
+  notes String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  groups WhatsAppGroup[]
+  recordings Recording[]
+  tasks Task[]
+  invoices Invoice[]
+  reminders Reminder[]
+  settings AutomationSetting?
+  @@map("clients")
+}
+
+model WhatsAppGroup {
+  id String @id @db.Uuid
+  clientId String @db.Uuid
+  jid String @unique
+  label String
+  isPrimary Boolean @default(false)
+  enabled Boolean @default(false)
+  authorizedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  attempts MessageAttempt[]
+  reminders Reminder[]
+  @@index([clientId])
+  @@map("whatsapp_groups")
+}
+
+model Recording {
+  id String @id @db.Uuid
+  clientId String @db.Uuid
+  title String
+  scheduledAt DateTime @db.Timestamptz(3)
+  durationMinutes Int?
+  location String?
+  notes String?
+  status RecordingStatus @default(SCHEDULED)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  reminders Reminder[]
+  @@index([clientId, scheduledAt])
+  @@map("recordings")
+}
+
+model Task {
+  id String @id @db.Uuid
+  clientId String @db.Uuid
+  title String
+  status TaskStatus @default(DRAFT)
+  clientReviewEnteredAt DateTime? @db.Timestamptz(3)
+  clientReviewRound Int @default(0)
+  dueAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  reminders Reminder[]
+  @@index([status, clientReviewEnteredAt])
+  @@map("tasks")
+}
+
+model Invoice {
+  id String @id @db.Uuid
+  clientId String @db.Uuid
+  period String
+  amountCents Int
+  currency String @default("USD")
+  dueDate DateTime @db.Date
+  status InvoiceStatus @default(PENDING)
+  paidAt DateTime? @db.Timestamptz(3)
+  remindersSent Int @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  reminders Reminder[]
+  @@unique([clientId, period])
+  @@index([status, dueDate])
+  @@map("invoices")
+}
+
+model Reminder {
+  id String @id @db.Uuid
+  type ReminderType
+  clientId String @db.Uuid
+  recordingId String? @db.Uuid
+  taskId String? @db.Uuid
+  invoiceId String? @db.Uuid
+  targetGroupId String? @db.Uuid
+  scheduledFor DateTime @db.Timestamptz(3)
+  status ReminderStatus @default(PENDING)
+  attempts Int @default(0)
+  maxAttempts Int @default(3)
+  claimedAt DateTime? @db.Timestamptz(3)
+  claimedBy String?
+  sentAt DateTime? @db.Timestamptz(3)
+  nextAttemptAt DateTime? @db.Timestamptz(3)
+  cancellationReason String?
+  idempotencyKey String @unique
+  lastError String?
+  templateId String?
+  templateVersion Int?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  recording Recording? @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  task Task? @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  invoice Invoice? @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  targetGroup WhatsAppGroup? @relation(fields: [targetGroupId], references: [id], onDelete: SetNull)
+  attemptsLog MessageAttempt[]
+  @@index([status, scheduledFor])
+  @@index([status, nextAttemptAt])
+  @@index([clientId, type])
+  @@map("reminders")
+}
+
+model MessageAttempt {
+  id String @id @db.Uuid
+  reminderId String @db.Uuid
+  groupId String? @db.Uuid
+  attemptNumber Int
+  startedAt DateTime @default(now()) @db.Timestamptz(3)
+  finishedAt DateTime? @db.Timestamptz(3)
+  status AttemptStatus @default(STARTED)
+  templateId String
+  templateVersion Int
+  renderedLength Int?
+  renderedVariables Json?
+  providerMessageId String?
+  errorCode String?
+  errorMessage String?
+  durationMs Int?
+  correlationId String
+  reminder Reminder @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+  group WhatsAppGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  @@unique([reminderId, attemptNumber])
+  @@index([status, startedAt])
+  @@map("message_attempts")
+}
+
+model AutomationSetting {
+  id String @id @db.Uuid
+  clientId String? @unique @db.Uuid
+  globalPaused Boolean @default(false)
+  businessHoursStart String @default("08:00")
+  businessHoursEnd String @default("18:30")
+  sendOnSundays Boolean @default(false)
+  maxRemindersPerTask Int @default(2)
+  maxRemindersPerInvoice Int @default(4)
+  taskReviewOffsetHours Int @default(48)
+  recordingOffsetHours Int @default(24)
+  invoiceOffsetsDays Int[] @default([-3, 0, 3, 7])
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  client Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  @@map("automation_settings")
+}
+
+model AuditEvent {
+  id String @id @db.Uuid
+  occurredAt DateTime @default(now()) @db.Timestamptz(3)
+  actor String
+  action String
+  entityType String
+  entityId String?
+  metadata Json?
+  correlationId String?
+  @@index([occurredAt])
+  @@index([entityType, entityId])
+  @@map("audit_events")
 }

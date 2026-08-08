@@ -54,6 +54,9 @@ const envSchema = z.object({
   REMINDER_STALE_AFTER_HOURS: z.coerce.number().int().positive().default(12),
   DRY_RUN_MARK_SENT: booleanFromString(false),
 
+  RETENTION_MONTHS: z.coerce.number().int().positive().default(12),
+  RETENTION_PURGE_INTERVAL_HOURS: z.coerce.number().int().positive().default(24),
+
   BUSINESS_HOURS_START: businessHourSchema.default("08:00"),
   BUSINESS_HOURS_END: businessHourSchema.default("18:30"),
   BUSINESS_SEND_ON_SUNDAYS: booleanFromString(false),
@@ -94,6 +97,10 @@ export interface AppConfig {
     readonly retryMaxSeconds: number;
     readonly staleAfterHours: number;
     readonly dryRunMarkSent: boolean;
+  };
+  readonly retention: {
+    readonly months: number;
+    readonly purgeIntervalHours: number;
   };
   readonly businessHours: {
     readonly start: string;
@@ -165,6 +172,10 @@ export function parseEnv(source: NodeJS.ProcessEnv): AppConfig {
       retryMaxSeconds: env.REMINDER_RETRY_MAX_SECONDS,
       staleAfterHours: env.REMINDER_STALE_AFTER_HOURS,
       dryRunMarkSent: env.DRY_RUN_MARK_SENT,
+    }),
+    retention: Object.freeze({
+      months: env.RETENTION_MONTHS,
+      purgeIntervalHours: env.RETENTION_PURGE_INTERVAL_HOURS,
     }),
     businessHours: Object.freeze({
       start: env.BUSINESS_HOURS_START,

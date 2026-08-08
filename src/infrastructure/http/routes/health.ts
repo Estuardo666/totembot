@@ -8,13 +8,14 @@ export interface ReadinessCheck {
 export interface HealthRoutesOptions {
   readonly serviceName: string;
   readonly readinessChecks: readonly ReadinessCheck[];
+  readonly now: () => Date;
 }
 
 export function registerHealthRoutes(app: FastifyInstance, options: HealthRoutesOptions): void {
   app.get("/health", () => ({
     status: "ok" as const,
     service: options.serviceName,
-    timestamp: new Date().toISOString(),
+    timestamp: options.now().toISOString(),
   }));
 
   app.get("/ready", async (_request, reply) => {

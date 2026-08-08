@@ -95,13 +95,13 @@ el volumen es alto, reanudar en dry-run primero.
 
 ## 3. Tareas periódicas
 
-| Frecuencia | Tarea                                                                        |
-| ---------- | ---------------------------------------------------------------------------- |
-| Diaria     | revisar `/status`; verificar que el respaldo del día existe                  |
-| Semanal    | revisar `failedLast24h` acumulado y los recordatorios `CANCELLED` por motivo |
-| Mensual    | `pnpm audit`; revisar actualizaciones de Baileys; purga de retención         |
-| Trimestral | **restaurar un respaldo en una base desechable** y verificarlo               |
-| Semestral  | rotar la contraseña de PostgreSQL                                            |
+| Frecuencia | Tarea                                                                          |
+| ---------- | ------------------------------------------------------------------------------ |
+| Diaria     | revisar `/status`; verificar que el respaldo del día existe                    |
+| Semanal    | revisar `failedLast24h`, `pm2 conf` y los recordatorios `CANCELLED` por motivo |
+| Mensual    | `pnpm audit`; revisar actualizaciones de Baileys; purga de retención           |
+| Trimestral | **restaurar un respaldo en una base desechable** y verificarlo                 |
+| Semestral  | rotar la contraseña de PostgreSQL                                              |
 
 ## 4. Piloto controlado (M7)
 

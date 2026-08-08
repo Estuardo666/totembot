@@ -131,6 +131,67 @@ introduciría un gancho de pre-commit adicional sin una necesidad concreta todav
 revisará si aparece fricción real (p. ej. commits que se saltan `pnpm check` con
 `--no-verify`).
 
+### 2026-08-07 — `Intl` para ventanas horarias en M3
+
+Se implementa la conversión IANA con `Intl.DateTimeFormat` en lugar de añadir Luxon en
+esta etapa. Motivo: Luxon figura como dependencia crítica pendiente de aprobación del
+propietario y Node 24 ya proporciona las primitivas necesarias para el volumen y las zonas
+del MVP. Impacto: la lógica de conversión queda encapsulada en `BusinessWindowService` y
+debe ampliarse con pruebas de DST si se incorporan zonas con horario de verano. La decisión
+de dependencia de Luxon queda abierta para una futura revisión.
+
+### 2026-08-07 — Repositorios ligados a la transacción Prisma
+
+El `TransactionManager` entrega repositorios construidos con el `TransactionClient` de
+Prisma dentro del callback de `$transaction`. Motivo: usar repositorios creados con el
+cliente raíz dentro del callback no participa en la transacción y permite que un rollback
+deje escrituras persistidas. Impacto: los casos de uso que combinan entidad, recordatorio e
+intento deben usar exclusivamente los repositorios recibidos por el callback.
+
+### 2026-08-07 — Migración correctiva para el formato de periodo
+
+La primera migración escapó incorrectamente `\\d` en la expresión regular de PostgreSQL y
+rechazaba periodos válidos como `2026-08`. Se conserva la migración aplicada y se añade
+`202608070002_fix_period_constraint` con una expresión `[0-9]` equivalente y verificable.
+
+### 2026-08-07 — Métricas de recordatorios consultadas bajo demanda
+
+`GET /status` consulta los conteos directamente mediante `ReminderRepository` en cada
+petición, en vez de mantener contadores mutables en memoria. Motivo: el worker puede
+reiniciarse y varios procesos pueden modificar recordatorios; PostgreSQL es la fuente de
+verdad. Impacto: el diagnóstico refleja el estado persistido y asume que la base de datos
+está disponible para responder el endpoint.
+
+### 2026-08-07 — Integración PostgreSQL serial entre archivos
+
+Los archivos de integración de Vitest se ejecutan en serie porque comparten una base de datos
+de pruebas y el claim del worker selecciona recordatorios globalmente. La concurrencia del
+claim permanece dentro del caso de prueba, usando dos conexiones independientes. Motivo:
+evitar interferencia entre fixtures y conservar una prueba fiel de `SKIP LOCKED`.
+
+### 2026-08-07 — La autorización de grupos requiere un instante manual
+
+`group:add` no autoriza grupos y `group:authorize` exige `--authorized-at` explícito. Motivo:
+la autorización representa una decisión del propietario sobre un grupo ya conocido, no un
+evento que el bot deba inferir por descubrir grupos. Impacto: un grupo sin `authorizedAt`
+nunca es elegible para envío; la acción queda auditada con actor `CLI`.
+
+### 2026-08-07 — Los respaldos se cifran en el servidor con una clave pública GPG
+
+M6-04 usa `pg_dump --format=custom` y cifra el flujo con la clave pública del propietario;
+la clave privada permanece fuera del VPS. Motivo: el servidor necesita crear respaldos
+automáticos, pero no debe tener capacidad de descifrarlos. El script escribe la contraseña
+solo en un `.pgpass` temporal `0600`, evita secretos en argv y limita la purga a sus propios
+archivos con retención de 30 días. La restauración real queda para M6-07.
+
+### 2026-08-07 — La rotación de logs vive en el módulo persistente de PM2
+
+M6-05 usa `pm2-logrotate@3.0.0`, configurado como el usuario `totembot`, con límite de 20 MiB,
+14 archivos, gzip, rotación diaria a medianoche UTC y comprobación cada 30 segundos. Motivo:
+PM2 es quien abre los logs y puede coordinar su rotación sin introducir un segundo mecanismo de
+reapertura de descriptores. La configuración se aplica con un script repetible y la instalación
+en producción sigue siendo `OWNER_REQUIRED`.
+
 ---
 
 ## Preguntas abiertas

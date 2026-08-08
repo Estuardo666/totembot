@@ -34,6 +34,7 @@ No hace falta ninguna credencial de WhatsApp para desarrollar. `WHATSAPP_ENABLED
 | `pnpm db:generate`                  | cliente Prisma                                                                     |
 | `pnpm db:migrate`                   | `prisma migrate dev` (**solo local**)                                              |
 | `pnpm db:deploy`                    | `prisma migrate deploy` (CI y producción)                                          |
+| `pnpm db:seed`                      | Carga datos ficticios de desarrollo; nunca datos reales                            |
 | `pnpm db:studio`                    | Prisma Studio                                                                      |
 | `pnpm cli <comando>`                | CLI administrativa                                                                 |
 | **`pnpm check`**                    | `format:check` + `lint` + `typecheck` + `test`. **Obligatorio antes de terminar.** |

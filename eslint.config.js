@@ -13,7 +13,14 @@ const infraOnlyImports = [
 
 export default tseslint.config(
   {
-    ignores: ["dist/**", "node_modules/**", "coverage/**", "prisma/generated/**"],
+    ignores: [
+      "dist/**",
+      "node_modules/**",
+      "coverage/**",
+      "prisma/generated/**",
+      // Config de PM2: CommonJS puro, fuera de cualquier tsconfig y nunca importado por src.
+      "ecosystem.config.cjs",
+    ],
   },
   ...tseslint.configs.recommendedTypeChecked,
   {

@@ -21,6 +21,14 @@ export default defineConfig({
           include: ["tests/integration/**/*.test.ts"],
           environment: "node",
           setupFiles: ["tests/setup/integration.ts"],
+          fileParallelism: false,
+        },
+      },
+      {
+        test: {
+          name: "e2e",
+          include: ["tests/e2e/**/*.test.ts"],
+          environment: "node",
         },
       },
     ],

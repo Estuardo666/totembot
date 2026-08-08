@@ -26,8 +26,66 @@ Versionado semántico. El proyecto está en `0.x`: nada es estable todavía.
 - CI en GitHub Actions (`pnpm check`, `pnpm audit --audit-level=high`, matriz de zonas
   horarias, `WHATSAPP_ENABLED=false` forzado) (M1-08).
 - `pnpm check` como comando único de verificación (M1-09).
-- `prisma/schema.prisma` mínimo (solo `datasource`/`generator`, sin modelar el dominio) y
-  `prisma.config.ts`; cliente generado con el adaptador `@prisma/adapter-pg`.
+- `prisma.config.ts` y cliente generado con el adaptador `@prisma/adapter-pg`.
+
+### Añadido — M2–M5 (núcleo seguro del MVP)
+
+- Entidades, transiciones de tareas, puertos, reloj inyectable, claves de idempotencia,
+  ventanas horarias, elegibilidad y reintentos.
+- Esquema Prisma completo, migración inicial con restricciones `CHECK`, unicidad de grupo
+  primario, índice parcial del worker y claim atómico con `SKIP LOCKED`.
+- Repositorios Prisma, casos de uso base para grabaciones, tareas e invoices, worker con
+  parada limpia, endpoint `/status` y gateways fake/dry-run.
+- Cinco plantillas v1 con Zod estricto, sanitización y `template:preview --sample`.
+- Pruebas unitarias, integración HTTP y E2E segura; ningún mensaje real de WhatsApp fue
+  enviado.
+- Límites efectivos de recordatorios, ciclo de vida de grabaciones (`reschedule`/`cancel`/`TOO_LATE`),
+  transición automática de facturas a `OVERDUE` y métricas persistidas en `/status`.
+- E2E ampliado para grabación, revisión de tarea, factura vencida y dry-run, sin activar WhatsApp
+  real.
+- CLI administrativa de clientes y grupos (`client:create/list`, `group:add/authorize`) con
+  validación Zod, autorización manual y auditoría.
+- Operación CLI (`automation:pause/resume`, `reminder:show/resolve`) y seed idempotente de
+  datos ficticios; la resolución de entrega incierta queda restringida a `NEEDS_REVIEW`.
+- Pruebas unitarias de la CLI (`tests/unit/cli.test.ts`): parseo de banderas, validación
+  Zod de estado, zona horaria IANA, JID de grupo, instante ISO-8601 con desfase, alcance
+  único en `automation:pause/resume` y `template:preview` sin dependencias de base de datos.
+- Prueba de integración CA-04 (`tests/integration/database/task-review.test.ts`): la salida
+  de `CLIENT_REVIEW` cancela los recordatorios pendientes, respeta los ya enviados y una
+  nueva ronda de revisión genera claves de idempotencia distintas.
+- CLI M5-10 para grabaciones, tareas e invoices, con fechas, importes y estados validados
+  por Zod, resolución de configuración por cliente y auditoría de operaciones.
+
+### Añadido — M6 (operación)
+
+- Purga de retención (M6-08, PRI-04): `RetentionPolicy` pura con corte estricto y recorte al
+  último día del mes, caso de uso `PurgeExpiredRecords` que borra `MessageAttempt` y
+  `AuditEvent` anteriores a la ventana, bucle propio en el worker separado del tick de envíos
+  y comando `pnpm cli retention:purge`. Configurable con `RETENTION_MONTHS` (12) y
+  `RETENTION_PURGE_INTERVAL_HOURS` (24).
+- `ecosystem.config.cjs` para PM2 (M6-01): `totem-server` y `totem-worker`, un proceso en
+  modo `fork` cada uno, `kill_timeout` de 20 s para el apagado limpio del worker y carga de
+  variables con `node --env-file` desde `/opt/totem-bot/shared/.env`. Sin secretos en el
+  repositorio. Desplegar sigue siendo `OWNER_REQUIRED`.
+- `docs/PROVISIONING.md` (M6-02): aprovisionamiento del VPS — base del sistema en UTC, SSH
+  sin root ni contraseña, cortafuegos, usuario de servicio `totembot`, Node 24 con pnpm y
+  PM2, PostgreSQL 17 solo en `localhost`, permisos de disco (`wa-auth` en 0700) y lista de
+  verificación. Ejecutarla es `OWNER_REQUIRED`.
+- Respaldo cifrado (M6-04): `scripts/backup-postgres.sh` genera dumps `custom`, los cifra con
+  GPG, evita solapamientos y aplica retención solo sobre sus propios archivos; cron diario a
+  las 03:00 UTC en `scripts/totem-bot-backup.cron`. La instalación y la importación de la
+  clave pública siguen siendo `OWNER_REQUIRED`.
+- Rotación de logs (M6-05): `scripts/configure-pm2-logrotate.sh` fija `pm2-logrotate@3.0.0`,
+  20 MiB por archivo, 14 archivos, gzip, rotación diaria UTC y comprobación cada 30 segundos.
+  Instalarlo y aplicarlo en producción sigue siendo `OWNER_REQUIRED`.
+
+### Corregido
+
+- `PrismaReminderRepository.insertIfAbsent` usaba `create` dentro de `try/catch`: en
+  PostgreSQL una violación de unicidad **aborta la transacción completa** (`25P02`), de
+  modo que absorber el conflicto dejaba la transacción inutilizable y hacía fallar el
+  resto del caso de uso. Ahora emite `ON CONFLICT DO NOTHING` vía `createMany` con
+  `skipDuplicates`.
 
 ### Añadido — M0 (documentación)
 
@@ -45,10 +103,13 @@ Versionado semántico. El proyecto está en `0.x`: nada es estable todavía.
 
 ### Notas
 
-- **No hay dominio ni casos de uso implementados** (M2/M3). **No hay worker funcional**
-  (M3-07). **No hay adaptador real de WhatsApp** (M4): `WHATSAPP_ENABLED=false` y
-  `WHATSAPP_DRY_RUN=true` siguen siendo los valores por defecto y no se han cambiado. No
-  hay sesión de WhatsApp vinculada. No se ha enviado ningún mensaje.
+- **No hay adaptador real de WhatsApp** (M4-01): añadir la dependencia crítica Baileys y
+  activar la integración siguen siendo `OWNER_REQUIRED`. `WHATSAPP_ENABLED=false` y
+  `WHATSAPP_DRY_RUN=true` siguen siendo los valores por defecto. No hay sesión vinculada
+  ni se ha enviado ningún mensaje.
+- PostgreSQL de pruebas fue levantado en Docker; la migración, las constraints, el rollback,
+  el claim concurrente y la recuperación de entrega incierta quedaron verificados con
+  `pnpm test:integration` usando `postgres-test`.
 - Se añaden `@prisma/adapter-pg` y `pg` como dependencias de runtime, no previstas en
   `docs/REFERENCES.md` original: Prisma 7 requiere un driver adapter explícito y ya no
   acepta `url` en `schema.prisma`. Registrado en `docs/REFERENCES.md` § 2.

@@ -99,6 +99,20 @@ riesgos · alternativas · motivo.
   para unit/integration.
 - **Verificado:** 2026-08-06
 
+### `pm2-logrotate` — rotación de logs de PM2
+
+- **Fuente:** https://github.com/pm2-hive/pm2-logrotate · https://www.npmjs.com/package/pm2-logrotate
+- **Seleccionado:** **`3.0.0`**, fijado en `scripts/configure-pm2-logrotate.sh`
+- **Node:** el paquete no publica un campo `engines`; se ejecuta como módulo del PM2 instalado
+  en el entorno Node 24 del usuario `totembot`.
+- **Riesgos:** modifica el estado persistente de PM2 y elimina archivos rotados según `retain`;
+  su instalación descarga dependencias operativas fuera del lockfile de la aplicación.
+- **Alternativas:** `logrotate` del sistema (requiere coordinar la reapertura de descriptores de
+  PM2); se elige el módulo porque administra los logs de las apps PM2 y su rotación interna.
+- **Motivo:** rotación diaria UTC, límite por tamaño, compresión y retención declaradas desde el
+  mismo usuario que administra PM2, sin añadir una dependencia al runtime de la aplicación.
+- **Verificado:** 2026-08-07
+
 ### `typescript`
 
 - **Fuente:** https://github.com/microsoft/TypeScript

@@ -208,11 +208,11 @@ un origen no nulo). Justificación en [docs/adr/0005-idempotent-reminders.md](do
 
 ## 9. Riesgos arquitectónicos
 
-| Riesgo                                            | Impacto              | Prob. | Mitigación                                                                                   |
-| ------------------------------------------------- | -------------------- | ----- | -------------------------------------------------------------------------------------------- |
-| Baileys deja de funcionar por cambio de protocolo | Alto                 | Media | Puerto `MessagingGateway`; plan B WhatsApp Cloud API                                         |
-| Baneo del número                                  | Alto                 | Media | Número secundario, volumen bajo, solo grupos propios, horario comercial                      |
-| Baileys 7.x en release candidate                  | Medio                | Alta  | Fijar la línea `6.7.x` (`legacy`) en M4 y reevaluar en el GA de 7.0                          |
-| Deriva de hora por zona horaria                   | Medio                | Media | `Clock` inyectable, todo en UTC en BD, Luxon para reglas de negocio, tests con reloj fijo    |
-| Fuga de la sesión (`auth`)                        | Muy alto             | Baja  | Fuera del repo, permisos `0600`, excluida de respaldos públicos, procedimiento de revocación |
-| Mensaje duplicado a un cliente                    | Medio (reputacional) | Baja  | Clave única + claim + política de entrega incierta                                           |
+| Riesgo                                            | Impacto              | Prob. | Mitigación                                                                                                |
+| ------------------------------------------------- | -------------------- | ----- | --------------------------------------------------------------------------------------------------------- |
+| Baileys deja de funcionar por cambio de protocolo | Alto                 | Media | Puerto `MessagingGateway`; plan B WhatsApp Cloud API                                                      |
+| Baneo del número                                  | Alto                 | Media | Número secundario, volumen bajo, solo grupos propios, horario comercial                                   |
+| Baileys 7.x en release candidate                  | Medio                | Alta  | Fijar la línea `6.7.x` (`legacy`) en M4 y reevaluar en el GA de 7.0                                       |
+| Deriva de hora por zona horaria                   | Medio                | Media | `Clock` inyectable, todo en UTC en BD, `Intl.DateTimeFormat` para reglas de negocio, tests con reloj fijo |
+| Fuga de la sesión (`auth`)                        | Muy alto             | Baja  | Fuera del repo, permisos `0600`, excluida de respaldos públicos, procedimiento de revocación              |
+| Mensaje duplicado a un cliente                    | Medio (reputacional) | Baja  | Clave única + claim + política de entrega incierta                                                        |

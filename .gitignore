@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+backup.env
 *.pem
 *.key
 *.p12

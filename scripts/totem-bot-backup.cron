@@ -1,0 +1,10 @@
+# Install as /etc/cron.d/totem-bot-backup, owned by root and mode 0644.
+# The owner must create /opt/totem-bot/shared/backup.env from backup.env.example,
+# import the public recipient key into root's GPG keyring, and verify permissions.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+CRON_TZ=UTC
+MAILTO=
+
+# Daily at 03:00 UTC. DATABASE_URL comes from the protected application .env.
+0 3 * * * root /usr/bin/bash -c 'set -Eeuo pipefail; export NVM_DIR=/home/totembot/.nvm; . "$NVM_DIR/nvm.sh"; nvm use --silent 24 >/dev/null; set -a; . /opt/totem-bot/shared/.env; . /opt/totem-bot/shared/backup.env; set +a; exec /opt/totem-bot/current/scripts/backup-postgres.sh >> /var/log/totem-bot/backup.log 2>&1'

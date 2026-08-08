@@ -51,6 +51,10 @@ completos con rutas del sistema).
 - `DATABASE_URL` con un usuario de PostgreSQL de mínimo privilegio (sin `SUPERUSER`,
   sin permisos sobre otras bases).
 - Permisos `0600` para el `.env` de producción.
+- Los dumps de PostgreSQL se cifran antes de persistirse en `/var/backups/totem-bot`, cuyo
+  directorio es `0700` y propiedad de `root`; la clave privada GPG se conserva fuera del VPS.
+- El script de respaldo usa un `.pgpass` temporal `0600`, no pone `DATABASE_URL` en los
+  argumentos del proceso y elimina el temporal al terminar. `wa-auth/` queda excluido.
 - **Rotación**: contraseña de la base de datos cada 6 meses o ante cualquier sospecha;
   sesión de WhatsApp ante cualquier sospecha o cambio de responsable.
 - Prohibido pasar secretos por argumentos de línea de comandos (quedan en el historial y en

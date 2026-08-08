@@ -49,6 +49,11 @@ Base de datos dedicada, levantada por Docker Compose (`postgres-test`, puerto di
 de desarrollo). `DATABASE_URL` de test es obligatoriamente distinta de la de desarrollo, y
 el runner aborta si el nombre de la base no termina en `_test`.
 
+Los archivos de integración se ejecutan en serie (`fileParallelism: false`) porque comparten
+una base de pruebas y algunas verificaciones, como el claim del worker, consultan el conjunto
+global de recordatorios. La concurrencia que se quiere probar sigue ocurriendo dentro del
+test, entre conexiones PostgreSQL independientes.
+
 Cada archivo de test corre dentro de una transacción con rollback, salvo los que prueban
 concurrencia (que necesitan commits reales y usan un esquema aislado).
 

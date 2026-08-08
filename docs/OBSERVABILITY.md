@@ -121,6 +121,10 @@ Solo accesible desde localhost (o a través de un túnel SSH). Nunca expuesto p�
 `/status` **no** incluye: JIDs completos, nombres de clientes, textos de mensajes, ni nada
 del estado de sesión más allá de un booleano.
 
+Los seis contadores de `reminders` se consultan en PostgreSQL en cada petición; no son un
+snapshot fijo del arranque. `dueNow` considera recordatorios pendientes o reintentables cuya
+ventana ya está disponible.
+
 ## 4. Alertas mínimas del MVP
 
 Sin Prometheus ni Grafana (fuera de alcance). Vigilancia manual con apoyo del runbook:
@@ -138,5 +142,8 @@ interno propio, nunca a un grupo de cliente).
 
 ## 5. Retención de logs
 
-PM2 con `pm2-logrotate`: rotación diaria, 14 archivos, comprimidos. Los logs viven fuera
-del repositorio, con permisos `0640`. Ver `OPERATIONS.md`.
+PM2 con `pm2-logrotate@3.0.0`: rotación diaria a medianoche UTC, límite de 20 MiB por archivo,
+14 archivos rotados, compresión gzip y revisión del tamaño cada 30 segundos. Se rotan también
+los logs del módulo (`rotateModule=true`). Los logs viven fuera del repositorio, con permisos
+`0640`. La configuración reproducible está en `scripts/configure-pm2-logrotate.sh`; ejecutarla
+en producción es `OWNER_REQUIRED`.

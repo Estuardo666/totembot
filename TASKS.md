@@ -218,8 +218,8 @@ sin `pnpm check` en verde y sin cumplir la Definición de Terminado de `AGENTS.m
 - **Pruebas requeridas:** ninguna
 - **Riesgos:** colisión de puertos con una instalación local.
 - **Requiere propietario:** no
-- **Estado:** `DONE` (2026-08-06) — configuración verificada; **no probada en ejecución**:
-  el daemon de Docker Desktop no estaba disponible en la máquina de desarrollo
+- **Estado:** `DONE` (2026-08-07) — ambos servicios levantados y saludables; migración y pruebas
+  PostgreSQL ejecutadas contra `postgres-test`.
 
 ### M1-08
 
@@ -250,64 +250,68 @@ sin `pnpm check` en verde y sin cumplir la Definición de Terminado de `AGENTS.m
 
 ## M2 — Dominio y persistencia
 
-- **M2-01** Entidades y objetos de valor del dominio (puros, sin I/O). _Pruebas: invariantes y transiciones de estado._
-- **M2-02** Definición de todos los puertos en `src/domain/ports/`.
-- **M2-03** `schema.prisma` completo + primera migración.
-- **M2-04** Restricciones SQL manuales (`CHECK`, índices parciales, índice único de grupo primario) en la migración. _Pruebas: cada restricción rechaza lo que debe._
-- **M2-05** `TransactionManager` sobre `$transaction` con repositorios transaccionales.
-- **M2-06** Repositorios Prisma: `Client`, `WhatsAppGroup`, `Recording`, `Task`, `Invoice`.
-- **M2-07** `ReminderRepository` con el claim atómico (SQL crudo con `SKIP LOCKED`). _Pruebas: CA-01._
-- **M2-08** `MessageAttempt` y `AuditEvent` con sus repositorios.
-- **M2-09** `SystemClock`, `UuidV7Generator` y sus dobles de prueba.
-- **M2-10** Semillas de desarrollo con datos ficticios (nunca datos reales).
+- **M2-01** Entidades y objetos de valor del dominio (puros, sin I/O). _Pruebas: invariantes y transiciones de estado._ **Estado: `DONE` (2026-08-07)**
+- **M2-02** Definición de todos los puertos en `src/domain/ports/`. **Estado: `DONE` (2026-08-07)**
+- **M2-03** `schema.prisma` completo + primera migración. **Estado: `DONE` (2026-08-07)**
+- **M2-04** Restricciones SQL manuales (`CHECK`, índices parciales, índice único de grupo primario) en la migración. _Pruebas: cada restricción rechaza lo que debe._ **Estado: `DONE` (2026-08-07) — verificada contra PostgreSQL; la corrección del formato de periodo vive en `202608070002_fix_period_constraint`.**
+- **M2-05** `TransactionManager` sobre `$transaction` con repositorios transaccionales. **Estado: `DONE` (2026-08-07) — repositorios ligados al `TransactionClient` y rollback verificado en PostgreSQL.**
+- **M2-06** Repositorios Prisma: `Client`, `WhatsAppGroup`, `Recording`, `Task`, `Invoice`. **Estado: `DONE` (2026-08-07)**
+- **M2-07** `ReminderRepository` con el claim atómico (SQL crudo con `SKIP LOCKED`). _Pruebas: CA-01._ **Estado: `DONE` (2026-08-07) — claim concurrente verificado: un único recordatorio reservado.**
+- **M2-08** `MessageAttempt` y `AuditEvent` con sus repositorios. **Estado: `DONE` (2026-08-07)**
+- **M2-09** `SystemClock`, `UuidV7Generator` y sus dobles de prueba. **Estado: `DONE` (2026-08-07) — generador UUID v7 implementado sin dependencia adicional.**
+- **M2-10** Semillas de desarrollo con datos ficticios (nunca datos reales). **Estado: `DONE` (2026-08-07)** — `pnpm db:seed` idempotente, grupo deshabilitado y no autorizado.
 
 ## M3 — Motor de recordatorios
 
-- **M3-01** `IdempotencyKeyFactory`. _Pruebas: determinismo y colisiones._
-- **M3-02** `ReminderSchedulePolicy` por tipo de origen.
-- **M3-03** `BusinessWindowService`. _Pruebas: toda la tabla de casos, con reloj fijo._
-- **M3-04** `EligibilityService`. _Pruebas: cada fila de la tabla de elegibilidad._
-- **M3-05** `RetryPolicy` con backoff y jitter inyectado.
-- **M3-06** Caso de uso `ProcessDueReminders` (orquestación del tick).
-- **M3-07** Bucle del worker con parada limpia (`SIGTERM`) y `src/worker.ts`.
-- **M3-08** Recuperación de locks expirados y manejo de entrega incierta (`NEEDS_REVIEW`). _Pruebas: CA-07._
-- **M3-09** `DryRunMessagingGateway` y `FakeMessagingGateway`.
-- **M3-10** Endpoint `/status` con las métricas de `docs/OBSERVABILITY.md`.
-- **M3-11** E2E con el fake gateway: los tres flujos completos. _Pruebas: CA-10._
+- **M3-01** `IdempotencyKeyFactory`. _Pruebas: determinismo y colisiones._ **Estado: `DONE` (2026-08-07)**
+- **M3-02** `ReminderSchedulePolicy` por tipo de origen. **Estado: `DONE` (2026-08-07)**
+- **M3-03** `BusinessWindowService`. _Pruebas: toda la tabla de casos, con reloj fijo._ **Estado: `DONE` (2026-08-07)** — fronteras de ventana, domingo, sábado, cambio de día, mes/año y zona horaria alternativa cubiertos.
+- **M3-04** `EligibilityService`. _Pruebas: cada fila de la tabla de elegibilidad._ **Estado: `DONE` (2026-08-07)** — límites por ordinal/contador, `TOO_LATE`, estados resueltos, pausas, grupo y ventana verificados.
+- **M3-05** `RetryPolicy` con backoff y jitter inyectado. **Estado: `DONE` (2026-08-07)**
+- **M3-06** Caso de uso `ProcessDueReminders` (orquestación del tick). **Estado: `DONE` (2026-08-07)**
+- **M3-07** Bucle del worker con parada limpia (`SIGTERM`) y `src/worker.ts`. **Estado: `DONE` (2026-08-07)**
+- **M3-08** Recuperación de locks expirados y manejo de entrega incierta (`NEEDS_REVIEW`). _Pruebas: CA-07._ **Estado: `DONE` (2026-08-07) — `SUCCESS` recupera a `SENT` y `STARTED` recupera a `NEEDS_REVIEW`, ambos verificados en PostgreSQL.**
+- **M3-09** `DryRunMessagingGateway` y `FakeMessagingGateway`. **Estado: `DONE` (2026-08-07)**
+- **M3-10** Endpoint `/status` con las métricas de `docs/OBSERVABILITY.md`. **Estado: `DONE` (2026-08-07)** — `/status` carga conteos persistidos de PostgreSQL y tiene prueba HTTP e integración de métricas.
+- **M3-11** E2E con el fake gateway: los tres flujos completos. _Pruebas: CA-10._ **Estado: `DONE` (2026-08-07)** — grabación, revisión de tarea, factura vencida y dry-run cubiertos sin gateway real.
 
 ## M4 — Adaptador de WhatsApp
 
-- **M4-01** `BaileysMessagingGateway` implementando el puerto (Baileys `6.7.24` fijado).
-- **M4-02** Mapeo de errores de Baileys a la clasificación del dominio. _Pruebas: funciones puras._
-- **M4-03** Almacén de sesión con verificación de permisos al arrancar.
-- **M4-04** Factoría del gateway con doble bandera; lanza error en `NODE_ENV=test`. _Pruebas: la protección funciona._
+- **M4-01** `BaileysMessagingGateway` implementando el puerto (Baileys `6.7.24` fijado). **Estado: `OWNER_REQUIRED` — añadir la dependencia crítica y su integración requiere aprobación explícita.**
+- **M4-02** Mapeo de errores de Baileys a la clasificación del dominio. _Pruebas: funciones puras._ **Estado: `DONE` (2026-08-07)**
+- **M4-03** Almacén de sesión con verificación de permisos al arrancar. **Estado: `DONE` (2026-08-07) — verificación implementada; no se creó ni usó una sesión real.**
+- **M4-04** Factoría del gateway con doble bandera; lanza error en `NODE_ENV=test`. _Pruebas: la protección funciona._ **Estado: `DONE` (2026-08-07)**
 - **M4-05** Comandos CLI: `whatsapp:link`, `whatsapp:status`, `whatsapp:logout`, `whatsapp:groups`. **`OWNER_REQUIRED` para ejecutarlos.**
 - **M4-06** Gestión de conexión y reconexión con backoff; detección de `loggedOut`.
-- **M4-07** Prueba que verifica que Baileys no se importa desde `tests/` ni desde `domain`.
+- **M4-07** Prueba que verifica que Baileys no se importa desde `tests/` ni desde `domain`. **Estado: `DONE` (2026-08-07) — no hay dependencia/import real en el código seguro actual.**
 - **M4-08** Reevaluar el salto a Baileys 7.x cuando exista GA (ADR nuevo si se decide migrar).
 
 ## M5 — Casos de uso
 
-- **M5-01** Alta y gestión de clientes y grupos por CLI (con `authorizedAt` manual).
-- **M5-02** Grabaciones: crear, reprogramar, cancelar; programación del recordatorio de 24 h.
-- **M5-03** Tareas: transiciones de estado con validación; programación al entrar en `CLIENT_REVIEW`.
-- **M5-04** Cancelación de recordatorios al salir de `CLIENT_REVIEW`. _Pruebas: CA-04._
-- **M5-05** Facturas: alta, marcar pagada, cálculo de `OVERDUE`.
-- **M5-06** Recordatorios de pago con sus offsets. _Pruebas: CA-03 (una factura pagada nunca envía)._
-- **M5-07** Plantillas v1 y el renderizador con validación Zod estricta. _Pruebas: snapshots._
-- **M5-08** `template:preview` y comandos CLI de operación (`automation:pause/resume`, `reminder:show/resolve`).
-- **M5-09** `AutomationSetting` con resolución cliente → global → default.
+- **M5-01** Alta y gestión de clientes y grupos por CLI (con `authorizedAt` manual). **Estado: `DONE` (2026-08-07)** — `client:create/list`, `group:add/authorize`, Zod, auditoría, pruebas PostgreSQL y pruebas unitarias de la capa CLI.
+- **M5-02** Grabaciones: crear, reprogramar, cancelar; programación del recordatorio de 24 h. **Estado: `DONE` (2026-08-07)** — reprogramación reemplaza ocurrencias pendientes, cancelación las cancela y la elegibilidad registra `TOO_LATE`.
+- **M5-03** Tareas: transiciones de estado con validación; programación al entrar en `CLIENT_REVIEW`. **Estado: `DONE` (2026-08-07) — caso de uso implementado y verificado en PostgreSQL; sigue sin punto de entrada CLI (ver M5-10).**
+- **M5-04** Cancelación de recordatorios al salir de `CLIENT_REVIEW`. _Pruebas: CA-04._ **Estado: `DONE` (2026-08-07) — CA-04 verificado en PostgreSQL: cancela pendientes, respeta los `SENT` y una nueva ronda usa claves distintas.**
+- **M5-05** Facturas: alta, marcar pagada, cálculo de `OVERDUE`. **Estado: `DONE` (2026-08-07)** — el worker marca automáticamente las facturas vencidas y la transición está verificada en PostgreSQL.
+- **M5-06** Recordatorios de pago con sus offsets. _Pruebas: CA-03 (una factura pagada nunca envía)._ **Estado: `DONE` (2026-08-07)** — política, revalidación de pago, límite por contador y E2E de factura vencida cubiertos.
+- **M5-07** Plantillas v1 y el renderizador con validación Zod estricta. _Pruebas: snapshots._ **Estado: `DONE` (2026-08-07) — cinco plantillas, sanitización y validación estricta implementadas.**
+- **M5-08** `template:preview` y comandos CLI de operación (`automation:pause/resume`, `reminder:show/resolve`). **Estado: `DONE` (2026-08-07)** — comandos operativos, validación, auditoría y resolución segura de `NEEDS_REVIEW`, con pruebas unitarias de parseo y validación en `tests/unit/cli.test.ts`.
+- **M5-09** `AutomationSetting` con resolución cliente → global → default. **Estado: `DONE` (2026-08-07)**
+- **M5-10** Comandos CLI para grabaciones, tareas y facturas (`recording:*`, `task:status`,
+  `invoice:*`). _Dependencias: M5-02, M5-03, M5-05 (`DONE`)._ **Estado: `DONE` (2026-08-07)** —
+  validación Zod, resolución de `AutomationSetting` por cliente, auditoría, pruebas unitarias
+  de delegación e integración PostgreSQL del flujo completo.
 
 ## M6 — Operación en Hostinger
 
-- **M6-01** `ecosystem.config.cjs` para PM2. **`OWNER_REQUIRED` para desplegar.**
-- **M6-02** Guía de aprovisionamiento del servidor (usuario de servicio, permisos, Node, PostgreSQL).
+- **M6-01** `ecosystem.config.cjs` para PM2. **Estado: `DONE` (2026-08-07)** — dos apps `fork` de una instancia, sin secretos: las variables se leen de `/opt/totem-bot/shared/.env` con `node --env-file`. **`OWNER_REQUIRED` para desplegar y para modificar este archivo (`AGENTS.md` § 5).**
+- **M6-02** Guía de aprovisionamiento del servidor (usuario de servicio, permisos, Node, PostgreSQL). **Estado: `DONE` (2026-08-07)** — `docs/PROVISIONING.md`, con lista de verificación. **`OWNER_REQUIRED` para ejecutarla.**
 - **M6-03** Base de datos y variables de producción. **`OWNER_REQUIRED`.**
-- **M6-04** Script de respaldo cifrado y su cron.
-- **M6-05** Rotación de logs con `pm2-logrotate`.
+- **M6-04** Script de respaldo cifrado y su cron. **Estado: `DONE` (2026-08-07)** — `scripts/backup-postgres.sh` cifra dumps `custom` con GPG, usa `.pgpass` temporal sin secretos en argv, evita ejecuciones solapadas y aplica retención segura; `scripts/totem-bot-backup.cron`, `scripts/backup.env.example` y `DEPLOYMENT.md` § 7 documentan la instalación. No se ejecutó contra producción (`OWNER_REQUIRED`).
+- **M6-05** Rotación de logs con `pm2-logrotate`. **Estado: `DONE` (2026-08-07)** — `scripts/configure-pm2-logrotate.sh` fija `pm2-logrotate@3.0.0`, límite de 20 MiB, retención de 14 archivos, gzip, rotación diaria UTC y verificación cada 30 segundos; `DEPLOYMENT.md`, `docs/PROVISIONING.md` y `docs/OBSERVABILITY.md` documentan la instalación. No se ejecutó en producción (`OWNER_REQUIRED`).
 - **M6-06** Verificación posterior al despliegue (health, ready, status) documentada y ejecutada.
 - **M6-07** **Ensayo de restauración de respaldo** sobre una base desechable.
-- **M6-08** Job de purga por retención (12 meses).
+- **M6-08** Job de purga por retención (12 meses). **Estado: `DONE` (2026-08-07)** — `RetentionPolicy` puro, caso de uso `PurgeExpiredRecords`, bucle propio en el worker (`RETENTION_PURGE_INTERVAL_HOURS`) y `pnpm cli retention:purge`; corte estricto e idempotencia verificados en PostgreSQL.
 
 ## M7 — Piloto controlado
 

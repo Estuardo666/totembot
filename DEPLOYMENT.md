@@ -4,6 +4,9 @@ Destino: VPS en Hostinger (Linux), Node 24 LTS, PostgreSQL 17, PM2.
 **Nada de esto se ejecuta sin el propietario.** Todos los pasos con credenciales,
 base de datos de producción o despliegue son `OWNER_REQUIRED`.
 
+El aprovisionamiento previo del servidor (sistema, usuario de servicio, Node, PostgreSQL,
+permisos) está en [`docs/PROVISIONING.md`](docs/PROVISIONING.md).
+
 ## 1. Requisitos del servidor
 
 - VPS con acceso root/sudo por SSH (no hosting compartido).
@@ -18,6 +21,7 @@ base de datos de producción o despliegue son `OWNER_REQUIRED`.
 /opt/totem-bot/           # código desplegado (propiedad de totembot, 0750)
   current/                # release activa
   shared/.env             # 0600, propiedad de totembot
+  shared/backup.env       # 0600, propiedad de root; solo configuración del respaldo
 /var/lib/totem-bot/
   wa-auth/                # sesión de Baileys, 0700  (NUNCA en el repo ni en respaldos generales)
 /var/log/totem-bot/       # logs de PM2, 0750
@@ -84,53 +88,68 @@ Reglas:
 
 ## 6. PM2
 
-`ecosystem.config.cjs` (borrador para M6):
+El archivo real es [`ecosystem.config.cjs`](ecosystem.config.cjs) en la raíz del repositorio
+(M6-01). Define dos apps, `totem-server` y `totem-worker`, y **no contiene secretos**: las
+variables se cargan con `node --env-file=/opt/totem-bot/shared/.env`. Modificarlo es
+`OWNER_REQUIRED` (`AGENTS.md` § 5).
 
-```js
-module.exports = {
-  apps: [
-    {
-      name: "totem-server",
-      script: "dist/server.js",
-      instances: 1,
-      exec_mode: "fork",
-      env_production: { NODE_ENV: "production", TZ: "UTC" },
-      max_memory_restart: "300M",
-      out_file: "/var/log/totem-bot/server.out.log",
-      error_file: "/var/log/totem-bot/server.err.log",
-      time: true,
-    },
-    {
-      name: "totem-worker",
-      script: "dist/worker.js",
-      instances: 1, // exactamente uno; el diseño tolera más, pero no hace falta
-      exec_mode: "fork",
-      env_production: { NODE_ENV: "production", TZ: "UTC" },
-      max_memory_restart: "400M",
-      restart_delay: 5000,
-      out_file: "/var/log/totem-bot/worker.out.log",
-      error_file: "/var/log/totem-bot/worker.err.log",
-      time: true,
-    },
-  ],
-};
-```
+Rutas que asume, ajustables por entorno con `TOTEM_APP_DIR`, `TOTEM_ENV_FILE` y
+`TOTEM_LOG_DIR`:
+
+| Ajuste                | Valor por defecto            |
+| --------------------- | ---------------------------- |
+| Directorio de trabajo | `/opt/totem-bot/current`     |
+| Archivo de variables  | `/opt/totem-bot/shared/.env` |
+| Logs                  | `/var/log/totem-bot`         |
 
 `exec_mode: 'fork'` con una sola instancia: **nunca `cluster`** para el worker. Aunque el
 claim atómico lo toleraría, no hay razón para multiplicar los envíos concurrentes a este
 volumen.
 
 Arranque en el boot: `pm2 startup systemd -u totembot --hp /home/totembot` y `pm2 save`.
-Rotación de logs: `pm2 install pm2-logrotate`, 14 días, comprimido.
+Rotación de logs: [`scripts/configure-pm2-logrotate.sh`](scripts/configure-pm2-logrotate.sh),
+ejecutado como `totembot` después del primer despliegue. Configura `pm2-logrotate@3.0.0`
+con límite de 20 MiB, 14 archivos rotados, compresión gzip, rotación diaria a medianoche UTC
+y comprobación de tamaño cada 30 segundos.
+
+```bash
+sudo -u totembot -H bash -lc '
+  source ~/.nvm/nvm.sh
+  cd /opt/totem-bot/current
+  bash scripts/configure-pm2-logrotate.sh
+'
+pm2 startup systemd -u totembot --hp /home/totembot
+sudo -u totembot -H bash -lc 'source ~/.nvm/nvm.sh && pm2 save'  # después de arrancar las apps
+```
 
 ## 7. Respaldos
 
+El respaldo diario usa [`scripts/backup-postgres.sh`](scripts/backup-postgres.sh). Genera un
+dump `custom` de PostgreSQL, lo cifra con la clave pública GPG del propietario y elimina solo
+los dumps creados por el propio script después de `BACKUP_RETENTION_DAYS` (30 por defecto).
+La clave privada permanece fuera del servidor. `wa-auth/` no forma parte de este respaldo.
+
+Instalación manual, como `root`, después de importar la clave pública en el keyring de `root`:
+
 ```bash
-# cron diario 03:00 UTC
-pg_dump -Fc totem_bot | gpg --encrypt --recipient <clave> > /var/backups/totem-bot/$(date +%F).dump.gpg
-find /var/backups/totem-bot -mtime +30 -delete
+# archivo de configuración sin DATABASE_URL ni claves privadas
+install -o root -g root -m 0600 scripts/backup.env.example /opt/totem-bot/shared/backup.env
+# editar BACKUP_GPG_RECIPIENT con la huella de la clave pública importada
+editor /opt/totem-bot/shared/backup.env
+
+chmod 0750 /opt/totem-bot/current/scripts/backup-postgres.sh
+install -o root -g root -m 0644 scripts/totem-bot-backup.cron /etc/cron.d/totem-bot-backup
+install -o root -g root -m 0640 /dev/null /var/log/totem-bot/backup.log
+
+# sintaxis local; no ejecuta pg_dump ni cifra datos
+bash -n /opt/totem-bot/current/scripts/backup-postgres.sh
 ```
 
+- El cron importa `DATABASE_URL` desde `/opt/totem-bot/shared/.env` y el destinatario GPG desde
+  `backup.env`; no se pasan secretos como argumentos de proceso.
+- El cron fija `CRON_TZ=UTC` y carga el Node 24 instalado con `nvm` para `totembot`; no depende
+  del PATH interactivo de una sesión SSH.
+- El directorio de destino debe ser `root:root` con modo `0700`; el script rechaza otros modos.
 - La sesión de WhatsApp (`wa-auth/`) **queda excluida** de los respaldos generales.
 - Restauración probada trimestralmente sobre una base desechable (tarea M6-07).
 
